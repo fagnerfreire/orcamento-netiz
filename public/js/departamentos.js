@@ -25,7 +25,6 @@ const Departamentos = (() => {
                             <thead>
                                 <tr>
                                     <th>Estrutura</th>
-                                    <th>Tipo</th>
                                     <th>Descrição</th>
                                     <th>Situação</th>
                                     <th>Ações</th>
@@ -34,7 +33,7 @@ const Departamentos = (() => {
                             <tbody>
                                 ${departamentos.length === 0 ? `
                                     <tr>
-                                        <td colspan="5" style="text-align: center; padding: 2rem;">
+                                        <td colspan="4" style="text-align: center; padding: 2rem;">
                                             Nenhum departamento cadastrado. Clique em "Novo Departamento" para começar.
                                         </td>
                                     </tr>
@@ -67,17 +66,7 @@ const Departamentos = (() => {
                                 <small>Selecione um departamento superior para criar uma hierarquia</small>
                             </div>
                             
-                            <div class="form-group">
-                                <label for="depTipo">Tipo</label>
-                                <select id="depTipo">
-                                    <option value="">Selecione...</option>
-                                    <option value="Operacional">Operacional</option>
-                                    <option value="Administrativo">Administrativo</option>
-                                    <option value="Estratégico">Estratégico</option>
-                                    <option value="Suporte">Suporte</option>
-                                </select>
-                            </div>
-                            
+
                             <div class="form-group">
                                 <label for="depDescricao">Descrição</label>
                                 <textarea id="depDescricao" rows="3" placeholder="Descrição do departamento..."></textarea>
@@ -142,7 +131,6 @@ const Departamentos = (() => {
                     <td>
                         ${indentacao}${icone} <strong>${no.nome}</strong>
                     </td>
-                    <td>${no.tipo || '-'}</td>
                     <td>${no.descricao || '-'}</td>
                     <td>
                         <span class="status-badge ${no.ativo ? 'status-aprovado' : 'status-rejeitado'}">
@@ -188,7 +176,6 @@ const Departamentos = (() => {
         document.getElementById('depNome').value = '';
         carregarOpcoesPai();
         document.getElementById('depPai').value = '';
-        document.getElementById('depTipo').value = '';
         document.getElementById('depDescricao').value = '';
         document.getElementById('depSituacao').value = '1';
         document.getElementById('modalDepartamento').style.display = 'flex';
@@ -207,7 +194,6 @@ const Departamentos = (() => {
             document.getElementById('depNome').value = dep.nome;
             carregarOpcoesPai(dep.id);
             document.getElementById('depPai').value = dep.departamento_pai_id || '';
-            document.getElementById('depTipo').value = dep.tipo || '';
             document.getElementById('depDescricao').value = dep.descricao || '';
             document.getElementById('depSituacao').value = dep.ativo ? '1' : '0';
             document.getElementById('modalDepartamento').style.display = 'flex';
@@ -225,7 +211,6 @@ const Departamentos = (() => {
         const dados = {
             nome: document.getElementById('depNome').value.trim(),
             departamento_pai_id: depPaiId ? parseInt(depPaiId) : null,
-            tipo: document.getElementById('depTipo').value,
             descricao: document.getElementById('depDescricao').value.trim(),
             ativo: parseInt(document.getElementById('depSituacao').value)
         };
