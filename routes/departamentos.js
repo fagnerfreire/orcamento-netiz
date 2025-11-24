@@ -74,15 +74,15 @@ router.get('/:id', auth, (req, res) => {
 
 // Criar departamento (admin apenas)
 router.post('/', auth, checkPerfil('admin'), (req, res) => {
-  const { nome, descricao, tipo, departamento_pai_id, ativo, gestores } = req.body;
+  const { nome, descricao, departamento_pai_id, ativo, gestores } = req.body;
 
   if (!nome) {
     return res.status(400).json({ erro: 'Nome do departamento é obrigatório' });
   }
 
   db.run(
-    'INSERT INTO departamentos (nome, descricao, tipo, departamento_pai_id, ativo) VALUES (?, ?, ?, ?, ?)',
-    [nome, descricao, tipo, departamento_pai_id || null, ativo !== undefined ? ativo : 1],
+    'INSERT INTO departamentos (nome, descricao, departamento_pai_id, ativo) VALUES (?, ?, ?, ?)',
+    [nome, descricao, departamento_pai_id || null, ativo !== undefined ? ativo : 1],
     function(err) {
       if (err) {
         return res.status(500).json({ erro: 'Erro ao criar departamento' });
@@ -109,16 +109,16 @@ router.post('/', auth, checkPerfil('admin'), (req, res) => {
 
 // Atualizar departamento
 router.put('/:id', auth, checkPerfil('admin'), (req, res) => {
-  const { nome, descricao, tipo, departamento_pai_id, ativo, gestores } = req.body;
+  const { nome, descricao, departamento_pai_id, ativo, gestores } = req.body;
 
   if (!nome) {
     return res.status(400).json({ erro: 'Nome do departamento é obrigatório' });
   }
 
   db.run(
-    `UPDATE departamentos SET nome = ?, descricao = ?, tipo = ?, departamento_pai_id = ?, ativo = ?, updated_at = CURRENT_TIMESTAMP
+    `UPDATE departamentos SET nome = ?, descricao = ?, departamento_pai_id = ?, ativo = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
-    [nome, descricao, tipo, departamento_pai_id || null, ativo !== undefined ? ativo : 1, req.params.id],
+    [nome, descricao, departamento_pai_id || null, ativo !== undefined ? ativo : 1, req.params.id],
     function(err) {
       if (err) {
         return res.status(500).json({ erro: 'Erro ao atualizar departamento' });
