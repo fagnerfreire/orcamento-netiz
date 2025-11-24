@@ -1,4 +1,4 @@
-// Módulo Categorias - Completo
+// Módulo Categorias - Completo com Upload
 const Categorias = (() => {
     let categorias = [];
     
@@ -11,9 +11,14 @@ const Categorias = (() => {
             container.innerHTML = `
                 <div class="card-header">
                     <h1>Categorias de Orçamento</h1>
-                    <button class="btn btn-primary" onclick="Categorias.showNovoModal()">
-                        <i class="fas fa-plus"></i> Nova Categoria
-                    </button>
+                    <div>
+                        <button class="btn btn-success" onclick="Categorias.showUploadModal()" style="margin-right: 10px;">
+                            <i class="fas fa-file-upload"></i> Importar Categorias
+                        </button>
+                        <button class="btn btn-primary" onclick="Categorias.showNovoModal()">
+                            <i class="fas fa-plus"></i> Nova Categoria
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="card">
@@ -22,7 +27,6 @@ const Categorias = (() => {
                             <thead>
                                 <tr>
                                     <th>Nome</th>
-                                    <th>Descrição</th>
                                     <th>Status</th>
                                     <th>Criado em</th>
                                     <th>Ações</th>
@@ -31,14 +35,13 @@ const Categorias = (() => {
                             <tbody>
                                 ${categorias.length === 0 ? `
                                     <tr>
-                                        <td colspan="5" style="text-align: center; padding: 2rem;">
-                                            Nenhuma categoria cadastrada. Clique em "Nova Categoria" para começar.
+                                        <td colspan="4" style="text-align: center; padding: 2rem;">
+                                            Nenhuma categoria cadastrada. Clique em "Nova Categoria" ou "Importar Categorias".
                                         </td>
                                     </tr>
                                 ` : categorias.map(cat => `
                                     <tr>
                                         <td><strong>${cat.nome}</strong></td>
-                                        <td>${cat.descricao || '-'}</td>
                                         <td>
                                             <span class="status-badge ${cat.ativo ? 'status-aprovado' : 'status-rejeitado'}">
                                                 ${cat.ativo ? 'Ativa' : 'Inativa'}
@@ -76,11 +79,6 @@ const Categorias = (() => {
                             </div>
                             
                             <div class="form-group">
-                                <label for="catDescricao">Descrição</label>
-                                <textarea id="catDescricao" rows="3" placeholder="Descrição da categoria..."></textarea>
-                            </div>
-                            
-                            <div class="form-group">
                                 <label>
                                     <input type="checkbox" id="catAtiva" checked>
                                     Ativa
@@ -96,6 +94,40 @@ const Categorias = (() => {
                         </form>
                     </div>
                 </div>
+                
+                <!-- Modal Upload -->
+                <div id="modalUpload" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Importar Categorias</h2>
+                            <span class="modal-close" onclick="Categorias.fecharModalUpload()">&times;</span>
+                        </div>
+                        <div style="padding: 20px;">
+                            <div class="alert alert-info" style="margin-bottom: 20px;">
+                                <strong>📋 Formato do Arquivo:</strong><br>
+                                • <strong>Excel (.xlsx)</strong> ou <strong>CSV (.csv)</strong><br>
+                                • Coluna: <strong>nome</strong> (obrigatório)<br>
+                                • Exemplo: <a href="#" onclick="Categorias.baixarModelo(); return false;">Baixar modelo</a>
+                            </div>
+                            
+                            <form id="formUpload" onsubmit="Categorias.processarUpload(event)">
+                                <div class="form-group">
+                                    <label for="arquivoUpload">Selecione o arquivo *</label>
+                                    <input type="file" id="arquivoUpload" accept=".xlsx,.xls,.csv" required>
+                                </div>
+                                
+                                <div id="uploadStatus" style="margin-top: 15px;"></div>
+                                
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" onclick="Categorias.fecharModalUpload()">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-upload"></i> Importar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             `;
         } catch (error) {
             container.innerHTML = `<div class="alert alert-error">Erro ao carregar categorias: ${error.message}</div>`;
@@ -106,9 +138,59 @@ const Categorias = (() => {
         document.getElementById('modalTitulo').textContent = 'Nova Categoria';
         document.getElementById('catId').value = '';
         document.getElementById('catNome').value = '';
-        document.getElementById('catDescricao').value = '';
         document.getElementById('catAtiva').checked = true;
         document.getElementById('modalCategoria').style.display = 'flex';
+    };
+    
+    const showUploadModal = () => {
+        document.getElementById('formUpload').reset();
+        document.getElementById('uploadStatus').innerHTML = '';
+        document.getElementById('modalUpload').style.display = 'flex';
+    };
+    
+    const baixarModelo = () => {
+        // Criar CSV modelo
+        const csv = 'nome\nSalários\nMarketing\nInfraestrutura\nTreinamento\nViagens';
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'modelo_categorias.csv';
+        link.click();
+        Utils.mostrarAlerta('Modelo baixado com sucesso!', 'success');
+    };
+    
+    const processarUpload = async (event) => {
+        event.preventDefault();
+        
+        const arquivo = document.getElementById('arquivoUpload').files[0];
+        if (!arquivo) {
+            Utils.mostrarAlerta('Selecione um arquivo', 'warning');
+            return;
+        }
+        
+        const statusDiv = document.getElementById('uploadStatus');
+        statusDiv.innerHTML = '<div class="alert alert-info">Processando arquivo...</div>';
+        
+        try {
+            const response = await API.categorias.importar(arquivo);
+            
+            statusDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>✅ Importação concluída!</strong><br>
+                    • ${response.importadas || 0} categorias importadas<br>
+                    ${response.duplicadas > 0 ? `• ${response.duplicadas} duplicadas ignoradas<br>` : ''}
+                    ${response.erros > 0 ? `• ${response.erros} erros<br>` : ''}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                fecharModalUpload();
+                render(document.getElementById('pageContent'));
+            }, 2000);
+            
+        } catch (error) {
+            statusDiv.innerHTML = `<div class="alert alert-error">Erro ao importar: ${error.message}</div>`;
+        }
     };
     
     const editar = async (id) => {
@@ -122,7 +204,6 @@ const Categorias = (() => {
             document.getElementById('modalTitulo').textContent = 'Editar Categoria';
             document.getElementById('catId').value = cat.id;
             document.getElementById('catNome').value = cat.nome;
-            document.getElementById('catDescricao').value = cat.descricao || '';
             document.getElementById('catAtiva').checked = cat.ativo;
             document.getElementById('modalCategoria').style.display = 'flex';
         } catch (error) {
@@ -136,7 +217,6 @@ const Categorias = (() => {
         const id = document.getElementById('catId').value;
         const dados = {
             nome: document.getElementById('catNome').value.trim(),
-            descricao: document.getElementById('catDescricao').value.trim(),
             ativo: document.getElementById('catAtiva').checked ? 1 : 0
         };
         
@@ -181,13 +261,21 @@ const Categorias = (() => {
         document.getElementById('modalCategoria').style.display = 'none';
     };
     
+    const fecharModalUpload = () => {
+        document.getElementById('modalUpload').style.display = 'none';
+    };
+    
     return { 
         render, 
-        showNovoModal, 
+        showNovoModal,
+        showUploadModal,
+        baixarModelo,
+        processarUpload,
         editar, 
         salvar,
         confirmarExclusao,
         deletar,
-        fecharModal
+        fecharModal,
+        fecharModalUpload
     };
 })();
