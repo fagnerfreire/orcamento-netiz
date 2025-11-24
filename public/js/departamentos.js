@@ -1,4 +1,4 @@
-// Módulo Departamentos - Completo
+// Módulo Departamentos - Completo com Hierarquia
 const Departamentos = (() => {
     let departamentos = [];
     
@@ -7,6 +7,9 @@ const Departamentos = (() => {
         
         try {
             departamentos = await API.departamentos.listar();
+            
+            // Organizar em estrutura de árvore
+            const arvore = construirArvore(departamentos);
             
             container.innerHTML = `
                 <div class="card-header">
@@ -21,10 +24,10 @@ const Departamentos = (() => {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Nome</th>
+                                    <th>Estrutura</th>
                                     <th>Tipo</th>
                                     <th>Descrição</th>
-                                    <th>Status</th>
+                                    <th>Situação</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -35,26 +38,7 @@ const Departamentos = (() => {
                                             Nenhum departamento cadastrado. Clique em "Novo Departamento" para começar.
                                         </td>
                                     </tr>
-                                ` : departamentos.map(dep => `
-                                    <tr>
-                                        <td><strong>${dep.nome}</strong></td>
-                                        <td>${dep.tipo || '-'}</td>
-                                        <td>${dep.descricao || '-'}</td>
-                                        <td>
-                                            <span class="status-badge ${dep.ativo ? 'status-aprovado' : 'status-rejeitado'}">
-                                                ${dep.ativo ? 'Ativo' : 'Inativo'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-primary" onclick="Departamentos.editar(${dep.id})" title="Editar">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="Departamentos.confirmarExclusao(${dep.id}, '${dep.nome}')" title="Excluir">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
+                                ` : renderArvore(arvore, 0)}
                             </tbody>
                         </table>
                     </div>
@@ -76,6 +60,14 @@ const Departamentos = (() => {
                             </div>
                             
                             <div class="form-group">
+                                <label for="depPai">Departamento Pai (Hierarquia)</label>
+                                <select id="depPai">
+                                    <option value="">Nenhum (Departamento Raiz)</option>
+                                </select>
+                                <small>Selecione um departamento superior para criar uma hierarquia</small>
+                            </div>
+                            
+                            <div class="form-group">
                                 <label for="depTipo">Tipo</label>
                                 <select id="depTipo">
                                     <option value="">Selecione...</option>
@@ -92,10 +84,11 @@ const Departamentos = (() => {
                             </div>
                             
                             <div class="form-group">
-                                <label>
-                                    <input type="checkbox" id="depAtivo" checked>
-                                    Ativo
-                                </label>
+                                <label for="depSituacao">Situação *</label>
+                                <select id="depSituacao" required>
+                                    <option value="1">Ativo</option>
+                                    <option value="0">Desativado</option>
+                                </select>
                             </div>
                             
                             <div class="modal-footer">
@@ -113,13 +106,91 @@ const Departamentos = (() => {
         }
     };
     
+    const construirArvore = (lista) => {
+        const mapa = {};
+        const raizes = [];
+        
+        // Criar mapa de departamentos
+        lista.forEach(dep => {
+            mapa[dep.id] = { ...dep, filhos: [] };
+        });
+        
+        // Construir árvore
+        lista.forEach(dep => {
+            if (dep.departamento_pai_id) {
+                if (mapa[dep.departamento_pai_id]) {
+                    mapa[dep.departamento_pai_id].filhos.push(mapa[dep.id]);
+                } else {
+                    raizes.push(mapa[dep.id]);
+                }
+            } else {
+                raizes.push(mapa[dep.id]);
+            }
+        });
+        
+        return raizes;
+    };
+    
+    const renderArvore = (nos, nivel) => {
+        let html = '';
+        nos.forEach(no => {
+            const indentacao = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(nivel);
+            const icone = no.filhos.length > 0 ? '<i class="fas fa-folder"></i>' : '<i class="fas fa-folder-open"></i>';
+            
+            html += `
+                <tr>
+                    <td>
+                        ${indentacao}${icone} <strong>${no.nome}</strong>
+                    </td>
+                    <td>${no.tipo || '-'}</td>
+                    <td>${no.descricao || '-'}</td>
+                    <td>
+                        <span class="status-badge ${no.ativo ? 'status-aprovado' : 'status-rejeitado'}">
+                            ${no.ativo ? 'Ativo' : 'Desativado'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="Departamentos.editar(${no.id})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="Departamentos.confirmarExclusao(${no.id}, '${no.nome}')" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            
+            if (no.filhos.length > 0) {
+                html += renderArvore(no.filhos, nivel + 1);
+            }
+        });
+        return html;
+    };
+    
+    const carregarOpcoesPai = (idAtual = null) => {
+        const select = document.getElementById('depPai');
+        select.innerHTML = '<option value="">Nenhum (Departamento Raiz)</option>';
+        
+        // Filtrar departamentos ativos, exceto o atual
+        const disponiveis = departamentos.filter(d => d.ativo && d.id !== idAtual);
+        
+        disponiveis.forEach(dep => {
+            const option = document.createElement('option');
+            option.value = dep.id;
+            option.textContent = dep.nome;
+            select.appendChild(option);
+        });
+    };
+    
     const showNovoModal = () => {
         document.getElementById('modalTitulo').textContent = 'Novo Departamento';
         document.getElementById('depId').value = '';
         document.getElementById('depNome').value = '';
+        carregarOpcoesPai();
+        document.getElementById('depPai').value = '';
         document.getElementById('depTipo').value = '';
         document.getElementById('depDescricao').value = '';
-        document.getElementById('depAtivo').checked = true;
+        document.getElementById('depSituacao').value = '1';
         document.getElementById('modalDepartamento').style.display = 'flex';
     };
     
@@ -134,9 +205,11 @@ const Departamentos = (() => {
             document.getElementById('modalTitulo').textContent = 'Editar Departamento';
             document.getElementById('depId').value = dep.id;
             document.getElementById('depNome').value = dep.nome;
+            carregarOpcoesPai(dep.id);
+            document.getElementById('depPai').value = dep.departamento_pai_id || '';
             document.getElementById('depTipo').value = dep.tipo || '';
             document.getElementById('depDescricao').value = dep.descricao || '';
-            document.getElementById('depAtivo').checked = dep.ativo;
+            document.getElementById('depSituacao').value = dep.ativo ? '1' : '0';
             document.getElementById('modalDepartamento').style.display = 'flex';
         } catch (error) {
             Utils.mostrarAlerta('Erro ao carregar departamento: ' + error.message, 'error');
@@ -147,15 +220,24 @@ const Departamentos = (() => {
         event.preventDefault();
         
         const id = document.getElementById('depId').value;
+        const depPaiId = document.getElementById('depPai').value;
+        
         const dados = {
             nome: document.getElementById('depNome').value.trim(),
+            departamento_pai_id: depPaiId ? parseInt(depPaiId) : null,
             tipo: document.getElementById('depTipo').value,
             descricao: document.getElementById('depDescricao').value.trim(),
-            ativo: document.getElementById('depAtivo').checked ? 1 : 0
+            ativo: parseInt(document.getElementById('depSituacao').value)
         };
         
         if (!dados.nome) {
             Utils.mostrarAlerta('Nome é obrigatório', 'warning');
+            return;
+        }
+        
+        // Validar ciclo circular
+        if (id && depPaiId && id === depPaiId) {
+            Utils.mostrarAlerta('Um departamento não pode ser pai de si mesmo', 'warning');
             return;
         }
         
@@ -176,7 +258,16 @@ const Departamentos = (() => {
     };
     
     const confirmarExclusao = (id, nome) => {
-        if (confirm(`Deseja realmente excluir o departamento "${nome}"?\n\nEsta ação não pode ser desfeita.`)) {
+        const dep = departamentos.find(d => d.id === id);
+        const temFilhos = departamentos.some(d => d.departamento_pai_id === id);
+        
+        let mensagem = `Deseja realmente excluir o departamento "${nome}"?`;
+        if (temFilhos) {
+            mensagem += '\n\n⚠️ ATENÇÃO: Este departamento possui subdepartamentos vinculados!';
+        }
+        mensagem += '\n\nEsta ação não pode ser desfeita.';
+        
+        if (confirm(mensagem)) {
             deletar(id);
         }
     };
