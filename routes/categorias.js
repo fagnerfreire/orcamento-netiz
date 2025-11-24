@@ -43,15 +43,15 @@ router.get('/:id', auth, (req, res) => {
 
 // Criar categoria (admin apenas)
 router.post('/', auth, checkPerfil('admin'), (req, res) => {
-  const { nome, descricao } = req.body;
+  const { nome, ativo } = req.body;
 
   if (!nome) {
     return res.status(400).json({ erro: 'Nome da categoria é obrigatório' });
   }
 
   db.run(
-    'INSERT INTO categorias (nome, descricao) VALUES (?, ?)',
-    [nome, descricao],
+    'INSERT INTO categorias (nome, ativo) VALUES (?, ?)',
+    [nome, ativo !== undefined ? ativo : 1],
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE')) {
@@ -69,16 +69,16 @@ router.post('/', auth, checkPerfil('admin'), (req, res) => {
 
 // Atualizar categoria
 router.put('/:id', auth, checkPerfil('admin'), (req, res) => {
-  const { nome, descricao, ativo } = req.body;
+  const { nome, ativo } = req.body;
 
   if (!nome) {
     return res.status(400).json({ erro: 'Nome da categoria é obrigatório' });
   }
 
   db.run(
-    `UPDATE categorias SET nome = ?, descricao = ?, ativo = ?, updated_at = CURRENT_TIMESTAMP
+    `UPDATE categorias SET nome = ?, ativo = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
-    [nome, descricao, ativo !== undefined ? ativo : 1, req.params.id],
+    [nome, ativo !== undefined ? ativo : 1, req.params.id],
     function(err) {
       if (err) {
         if (err.message.includes('UNIQUE')) {
@@ -139,14 +139,13 @@ router.post('/importar', auth, checkPerfil('admin'), upload.single('arquivo'), (
     let importadas = 0;
     let erros = [];
 
-    const stmt = db.prepare('INSERT OR IGNORE INTO categorias (nome, descricao) VALUES (?, ?)');
+    const stmt = db.prepare('INSERT OR IGNORE INTO categorias (nome) VALUES (?)');
 
     data.forEach((row, index) => {
       const nome = row.nome || row.Nome || row.NOME || row.Categoria || row.categoria;
-      const descricao = row.descricao || row.Descricao || row.DESCRICAO || '';
 
       if (nome) {
-        stmt.run(nome, descricao, function(err) {
+        stmt.run(nome, function(err) {
           if (!err && this.changes > 0) {
             importadas++;
           } else if (err) {
