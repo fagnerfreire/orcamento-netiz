@@ -45,9 +45,11 @@ function initDatabase() {
         nome TEXT NOT NULL,
         descricao TEXT,
         tipo TEXT,
+        departamento_pai_id INTEGER,
         ativo INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (departamento_pai_id) REFERENCES departamentos(id) ON DELETE SET NULL
       )`);
 
       // Tabela de Vinculo Gestor-Departamento
