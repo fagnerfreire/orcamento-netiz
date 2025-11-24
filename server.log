@@ -1,14 +1,86 @@
-✅ Banco de dados inicializado com sucesso!
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const { initDatabase } = require('./database');
+const { agendarBackupAutomatico } = require('./utils/backup');
 
-  ╔═══════════════════════════════════════════╗
-  ║   🚀 Sistema de Orçamento - Netiz       ║
-  ║                                           ║
-  ║   Servidor rodando em:                    ║
-  ║   http://localhost:3000                    ║
-  ║                                           ║
-  ║   Admin padrão:                           ║
-  ║   Email: admin@netiz.com.br              ║
-  ║   Senha: admin123                         ║
-  ╚═══════════════════════════════════════════╝
-  
-✅ Usuário admin criado: admin@netiz.com.br / admin123
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Verificar JWT_SECRET
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️  AVISO: JWT_SECRET não definido! Usando valor padrão (NÃO SEGURO PARA PRODUÇÃO)');
+  process.env.JWT_SECRET = 'netiz_orcamento_secret_key_2024_super_seguro';
+}
+
+console.log('🔑 JWT_SECRET configurado:', process.env.JWT_SECRET ? 'SIM' : 'NÃO');
+console.log('🌍 NODE_ENV:', process.env.NODE_ENV || 'development');
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
+
+// Inicializar banco de dados
+initDatabase()
+  .then(() => {
+    console.log('✅ Database pronto!');
+    
+    // Agendar backup automático
+    agendarBackupAutomatico();
+    
+    // Rotas da API
+    app.use('/api/auth', require('./routes/auth'));
+    app.use('/api/usuarios', require('./routes/usuarios'));
+    app.use('/api/departamentos', require('./routes/departamentos'));
+    app.use('/api/categorias', require('./routes/categorias'));
+    app.use('/api/periodos', require('./routes/periodos'));
+    app.use('/api/orcamentos', require('./routes/orcamentos'));
+    app.use('/api/contestacoes', require('./routes/contestacoes'));
+    app.use('/api/notificacoes', require('./routes/notificacoes'));
+    app.use('/api/dashboard', require('./routes/dashboard'));
+    app.use('/api/logs', require('./routes/logs'));
+    app.use('/api/relatorios', require('./routes/relatorios'));
+    app.use('/api/backup', require('./routes/backup'));
+
+    // Rota principal
+    app.get('/', (req, res) => {
+      res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    });
+
+    // Rota de saúde
+    app.get('/health', (req, res) => {
+      res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        jwt_configured: !!process.env.JWT_SECRET 
+      });
+    });
+
+    // Iniciar servidor
+    app.listen(PORT, () => {
+      console.log('\n' + '='.repeat(60));
+      console.log('🚀 Sistema de Orçamento Netiz');
+      console.log('='.repeat(60));
+      console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
+      console.log(`📧 Login: fagner@netiz.com.br`);
+      console.log(`🔑 Senha: netiz2024`);
+      console.log(`📧 Ou: admin@netiz.com.br / admin123`);
+      console.log('='.repeat(60) + '\n');
+    });
+  })
+  .catch(err => {
+    console.error('❌ Erro ao inicializar database:', err);
+    process.exit(1);
+  });
+
+// Tratamento de erros não capturados
+process.on('uncaughtException', (err) => {
+  console.error('❌ Erro não capturado:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promise rejeitada não tratada:', reason);
+});
